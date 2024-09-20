@@ -1,15 +1,17 @@
 const express = require('express');
-
-const expenseControler =require('../controlers/exppense');
-
+const expenseController = require('../controlers/exppense');
 const router = express.Router();
 
-router.post('/expense', expenseControler.postexpense);
+// POST request to add an expense
+router.post('/expense', expenseController.postexpense);
 
-router.get('/expense', expenseControler.getexpense);
+// GET request to get all expenses
+router.get('/expense', expenseController.getexpense);
 
-router.put('/expense', expenseControler.putexpense);
+// PUT request to update an expense by ID
+router.put('/expense/:expenseid', expenseController.putexpense);
 
-router.delete('/expense', expenseControler.deleteexpense);
+// DELETE request to delete an expense by ID
+router.delete('/expense/:expenseid', expenseController.deleteexpense);
 
 module.exports = router;

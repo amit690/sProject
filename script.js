@@ -1,45 +1,75 @@
-// Getting elements from the document and declaring a flag for the edit button
+// Axios functions for making API calls
+async function getExpense() {
+    try {
+        const allExpenses = await axios.get("http://localhost:4000/expense");
+        return allExpenses.data.expenses;
+    } catch (error) {
+        console.log(error);
+        return [];
+    }
+}
+
+async function postExpense(expense) {
+    try {
+        const res = await axios.post("http://localhost:4000/expense", expense);
+        return res.data.expense;
+    } catch (error) {
+        console.log(error);
+        return [];
+    }
+}
+
+async function deleteExpense(id) {
+    try {
+        const res = await axios.delete(`http://localhost:4000/expense/${id}`);
+        return res.data.message;
+    } catch (error) {
+        console.log(error);
+        return [];
+    }
+}
+
+async function putExpense(id, updatedExpense) {
+    try {
+        const res = await axios.put(`http://localhost:4000/expense/${id}`, updatedExpense);
+        return res.data.editedExpense;
+    } catch (error) {
+        console.log(error);
+        return [];
+    }
+}
+
+// DOM Elements and Variables
 const form = document.getElementById('inputForm');
 const tableBody = document.getElementById("expenseTableBody");
 let editIndex = -1;
+let editId = null; // Stores the ID of the expense to be edited
 
 // Handling form submit
-form.addEventListener('submit', (e) => {
+form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    // Getting the values from input items
+
     const amount = document.getElementById('expenseAmount').value;
     const description = document.getElementById('description').value;
     const category = document.getElementById('category').value;
 
-    // Creating expense object and adding/updating it in the local storage
-    const expense = {
-        amount: amount,
-        description: description,
-        category: category,
-    }
+    const expense = { amount, description, category };
 
-    let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
     if (editIndex === -1) {
-        expenses.push(expense);
+        await postExpense(expense); // Create new expense
     } else {
-        expenses[editIndex] = expense;
-        editIndex = -1; // Resetting the edit index
+        await putExpense(editId, expense); // Update existing expense
+        editIndex = -1;
+        editId = null;
     }
 
-    // Saving back to the local storage
-    localStorage.setItem('expenses', JSON.stringify(expenses));
-
-    // Reset the form
     form.reset();
-
-    // Update the table
-    displayExpenses();
+    displayExpenses(); // Refresh the table
 });
 
-function displayExpenses() {
-    // Getting values from local storage
-    let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
-    // Clearing the table body
+// Display Expenses in Table
+async function displayExpenses() {
+    const expenses = await getExpense();
     tableBody.innerHTML = '';
     expenses.forEach((expense, index) => {
         const row = document.createElement('tr');
@@ -49,62 +79,44 @@ function displayExpenses() {
             <td>${expense.description}</td>
             <td>${expense.category}</td>
             <td>
-                <button class="btn btn-primary btn-sm edit-expense" data-index="${index}">Edit</button>
-                <button class="btn btn-danger btn-sm delete-expense" data-index="${index}">Delete</button>
+                <button class="btn btn-primary btn-sm edit-expense" data-id="${expense.id}" data-index="${index}">Edit</button>
+                <button class="btn btn-danger btn-sm delete-expense" data-id="${expense.id}">Delete</button>
             </td>
         `;
         tableBody.appendChild(row);
     });
 
-    // Add event listeners to delete buttons
-    const deleteButtons = document.querySelectorAll('.delete-expense');
-    deleteButtons.forEach(button => {
-        button.addEventListener('click', (e) => {
-            const index = e.target.getAttribute('data-index');
-            deleteExpense(index);
+    // Add event listeners for delete buttons
+    document.querySelectorAll('.delete-expense').forEach(button => {
+        button.addEventListener('click', async (e) => {
+            const id = e.target.getAttribute('data-id');
+            await deleteExpense(id);
+            displayExpenses(); // Refresh table after deletion
         });
     });
 
-    // Add event listeners to edit buttons
-    const editButtons = document.querySelectorAll('.edit-expense');
-    editButtons.forEach(button => {
+    // Add event listeners for edit buttons
+    document.querySelectorAll('.edit-expense').forEach(button => {
         button.addEventListener('click', (e) => {
+            const id = e.target.getAttribute('data-id');
             const index = e.target.getAttribute('data-index');
-            editExpense(index, e.target);
+            editExpense(id, index);
         });
     });
 }
 
-function deleteExpense(index) {
-    // Accessing the local storage values
-    let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
-    // Deleting the specific row
-    expenses.splice(index, 1);
-    // Saving back to local storage
-    localStorage.setItem('expenses', JSON.stringify(expenses));
-    // Display the new table
-    displayExpenses();
-}
-
-function editExpense(index, editButton) {
-    // Accessing the local storage values
-    let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
-    // Getting the expense to be edited
+// Edit Expense
+async function editExpense(id, index) {
+    const expenses = await getExpense();
     const expense = expenses[index];
-    // Filling the input fields
+
     document.getElementById('expenseAmount').value = expense.amount;
     document.getElementById('description').value = expense.description;
     document.getElementById('category').value = expense.category;
-    // Setting the edit index
+
     editIndex = index;
-    // Change the edit button color to red
-    editButton.classList.add('btn-danger');
-    // Highlight the table row
-    document.querySelectorAll('tr').forEach(row => row.classList.remove('table-warning'));
-    editButton.closest('tr').classList.add('table-warning');
+    editId = id;
 }
 
-// Load existing expenses when the document is ready
-document.addEventListener('DOMContentLoaded', () => {
-    displayExpenses();
-});
+// Load expenses when document is ready
+document.addEventListener('DOMContentLoaded', displayExpenses);
